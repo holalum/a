@@ -1,0 +1,54 @@
+import discord
+from discord.ext import commands
+from discord.ui import Button, View
+
+intents = discord.Intents.default()
+intents.message_content = True  # Не забудьте включить нужные интенты
+
+bot = commands.Bot(command_prefix='+', intents=intents)
+
+# Событие при запуске бота
+@bot.event
+async def on_ready():
+    print(f'{bot.user.name} готов к работе!')  # Вывод в консоль
+    # Отправка сообщения в определенный канал (укажите нужный канал по его ID)
+    channel_id = 123456789012345678  # Замените на ID вашего канала
+    channel = bot.get_channel(channel_id)
+    if channel:
+        await channel.send("Бот готов к работе!")
+
+# Команда +say
+@bot.command()
+async def say(ctx, *, message: str):
+    await ctx.message.delete()  # Удаление сообщения пользователя
+    embed = discord.Embed(description=message, color=discord.Color.blue())
+    await ctx.send(embed=embed)
+
+# Команда +вериф
+@bot.command()
+async def вериф(ctx):
+    await ctx.message.delete()  # Удаление сообщения пользователя
+    embed = discord.Embed(
+        title="Верификация",
+        description="Нажми на кнопку для верификации",
+        color=discord.Color.green()
+    )
+
+    # Создаем кнопку
+    class VerificationButton(View):
+        def __init__(self):
+            super().__init__(timeout=None)  # Кнопка не будет автоматически отключаться
+
+        @discord.ui.button(label="Верифицировать", style=discord.ButtonStyle.green)
+        async def verify_button(self, interaction: discord.Interaction, button: Button):
+            role_id = 1274379406894174393  # Замените на ID нужной роли
+            role = interaction.guild.get_role(role_id)
+            if not role:
+                await interaction.response.send_message("Роль не найдена!", ephemeral=True)
+            else:
+                await interaction.user.add_roles(role)
+                await interaction.response.send_message("Вы успешно верифицированы!", ephemeral=True)  # Сообщение только для пользователя
+
+    await ctx.send(embed=embed, view=VerificationButton())
+
+bot.run("MTI3NDc1Mjk3Nzk3ODEzMDQ1Mg.GJN_FL.udGKDGk_ASvCMCYul9n2whzA-m0qftmzmZpI34")
