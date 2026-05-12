@@ -1,53 +1,82 @@
-# Telegram message tracker
+# Telegram message tracker — public service
 
-A Telegram **userbot** that watches your own chats and sends you a DM whenever
-the other side **deletes** or **edits** a message. Notifications are delivered
-by a separate bot you create via [@BotFather](https://t.me/BotFather).
+A control bot anyone can DM. The bot walks each user through a Telegram login,
+keeps a per-user MTProto session, and notifies the user whenever someone
+**edits** or **deletes** a message in their chats.
 
-## Why a userbot and not a normal bot?
+## ⚠️ Security model — read this before deploying
 
-The Bot API does not expose deletion events at all, and a bot cannot read
-private chats between other users. To see deletions across *your* chats you
-have to act as a second client of your own account, which is what this script
-does via the MTProto API (Telethon).
+To see deletions/edits in a user's private chats, the Telegram **Bot API is
+not enough** — Telegram does not deliver deletion events to bots, and bots
+don't see DMs between other users. The only way is to run an MTProto client
+**as the user**. So every user that signs up gives this server a
+`StringSession` that is functionally equivalent to a full account password.
 
-For personal use this is fine; do not use it to spy on anyone else.
+- The server can read **all** of their messages, send messages as them, join
+  channels, change profile, etc.
+- A leak of `service.db` is a mass account takeover.
+- Users should only sign up with operators they personally trust. State this
+  clearly in your bot's `/start` text (the default `/help` already does).
+- Consider encrypting `service.db` at rest (e.g. with SQLCipher) and running
+  behind a host you fully control. This repo intentionally keeps things
+  minimal — encryption is left to the operator.
+
+If that risk is unacceptable for your use case, this project is the wrong
+shape and you should self-host the single-user version per user instead.
+
+## How it works
+
+1. User DMs the bot, sends `/login`.
+2. Bot collects phone → SMS code → optional 2FA password.
+3. On success, the resulting `StringSession` is stored in `service.db` and a
+   per-user Telethon listener task starts inside the same process.
+4. Each listener caches every incoming/outgoing message of its user, and on
+   `MessageEdited` / `MessageDeleted` events from the other side, the control
+   bot DMs the user with a `✏️ Edited` / `🗑 Deleted` summary.
+5. `/logout` disconnects the listener and wipes the user's session and
+   cached messages.
 
 ## Setup
-
-1. Get `API_ID` and `API_HASH` at <https://my.telegram.org/apps>.
-2. Create a bot via [@BotFather](https://t.me/BotFather), copy its token.
-3. Find out your numeric Telegram user id (e.g. via [@userinfobot](https://t.me/userinfobot)).
-4. Start a chat with your new bot and send it any message (otherwise it can't
-   DM you — Telegram blocks bot-initiated DMs).
-5. Copy `.env.example` to `.env` and fill it in.
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env  # then edit it
-python tracker.py
+cp .env.example .env  # fill API_ID, API_HASH, BOT_TOKEN
+python service.py
 ```
 
-On first launch Telethon will prompt for your phone number and the login code
-Telegram sends you. After that, `user.session` and `bot.session` files are
-reused.
+Required env vars (`.env`):
 
-## What it tracks
+- `API_ID`, `API_HASH` — from <https://my.telegram.org/apps>.
+- `BOT_TOKEN` — from [@BotFather](https://t.me/BotFather). This is the bot
+  users will talk to.
+- `RETENTION_DAYS` (optional, default 7) — how long cached message text is
+  kept per user, for resolving deletions.
 
-- **All chats**: 1:1, groups, channels.
-- New incoming and outgoing messages are cached in `messages.db` (SQLite).
-- On `MessageEdited` (not your own): sends a `✏️ Edited` notification with
-  before/after.
-- On `MessageDeleted` (not your own): sends a `🗑 Deleted` notification with
-  the cached text and a note if there was media.
-- Cache entries older than `RETENTION_DAYS` (default 7) are pruned hourly.
+## Commands users see
 
-## Limits
+- `/start`, `/help` — explanation and warning.
+- `/login` — start the phone → code → 2FA flow.
+- `/status` — am I connected?
+- `/logout` — wipe session + cache for this user.
+- `/cancel` — abort an in-progress login.
 
-- A deletion can only be reported if the message was seen by the userbot *and*
-  is still in the cache. Messages older than `RETENTION_DAYS`, or messages
-  received while the script wasn't running, can't be recovered.
-- Telegram itself doesn't tell clients *which* message was deleted in some
-  cases — only the message id. The script resolves it via the local cache.
-- Media isn't re-downloaded; only the media type is logged.
+## Operational notes
+
+- The Telegram login code must be entered **with spaces between digits**
+  (`1 2 3 4 5`). Sending a bare numeric code in a Telegram chat causes
+  Telegram itself to invalidate the code as a security measure. The bot
+  reminds the user of this when asking for the code.
+- All listeners run as `asyncio` tasks in the same process. For hundreds of
+  users this is fine; beyond that you'll want to shard.
+- `service.db` uses WAL. Back it up while the service is running is OK, but
+  again: it contains login-equivalent secrets.
+- A deletion can only be reported if the listener was running when the
+  original message arrived and the cache row hasn't aged out.
+
+## Files
+
+- `service.py` — entire service.
+- `service.db` — SQLite store: `users`, `messages`. **Sensitive**, in
+  `.gitignore`.
+- `service-bot.session` — Telethon bot session file.

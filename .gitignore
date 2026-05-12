@@ -2,6 +2,9 @@
 *.session
 *.session-journal
 messages.db
+service.db
+service.db-wal
+service.db-shm
 __pycache__/
 *.pyc
 .venv/
