@@ -71,19 +71,30 @@ export function WheelPage() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    // Реальный размер канваса на экране — квадрат гарантируется CSS (aspect-ratio).
+    const rect = canvas.getBoundingClientRect();
+    const size = Math.round(Math.min(rect.width, rect.height));
+    if (size === 0) return;
     const dpr = window.devicePixelRatio || 1;
-    const size = 300;
-    if (canvas.width !== size * dpr) {
-      canvas.width = size * dpr;
-      canvas.height = size * dpr;
+    const buf = Math.round(size * dpr);
+    if (canvas.width !== buf || canvas.height !== buf) {
+      canvas.width = buf;
+      canvas.height = buf;
     }
-    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
     drawWheel(ctx, size, rotationRef.current);
-    ctx.restore();
   }, []);
 
-  useEffect(() => { render(); }, [render]);
+  // Перерисовка после монтирования и при ресайзе окна.
+  useEffect(() => {
+    const raf = requestAnimationFrame(render);
+    window.addEventListener('resize', render);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', render);
+    };
+  }, [render]);
 
   useEffect(() => {
     if (available || nextAt == null) return;

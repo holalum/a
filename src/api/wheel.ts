@@ -2,8 +2,8 @@ import type { Prize, SpinResult } from './types';
 
 export const SPIN_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 
-const STORAGE_LAST_SPIN = 'aurora.wheel.lastSpin';
-const STORAGE_HISTORY = 'aurora.wheel.history';
+const STORAGE_LAST_SPIN = 'harmony.wheel.lastSpin';
+const STORAGE_HISTORY = 'harmony.wheel.history';
 
 export const PRIZES: Prize[] = [
   { id: 'd7',    label: '7 дней подписки',      shortLabel: '+7 дней',   kind: 'days',     amount: 7,   weight: 14, color: '#7c5cff' },

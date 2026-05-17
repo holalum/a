@@ -13,10 +13,10 @@ let profile: Profile = {
   id: tgUser?.id ?? 100200300,
   firstName: tgUser?.first_name ?? 'Гость',
   lastName: tgUser?.last_name,
-  username: tgUser?.username ?? 'aurora_user',
+  username: tgUser?.username ?? 'harmony_user',
   photoUrl: tgUser?.photo_url,
   isPremium: tgUser?.is_premium,
-  referralCode: 'AURORA-' + String(tgUser?.id ?? 100200300).slice(-4),
+  referralCode: 'HARMONY-' + String(tgUser?.id ?? 100200300).slice(-4),
   referralsCount: 3,
   referralEarnings: 149.80,
   referralCommission: 20,
@@ -24,13 +24,13 @@ let profile: Profile = {
 };
 
 let subscription: Subscription = {
-  plan: 'Aurora Pro',
+  plan: 'Harmony Pro',
   status: 'active',
   startedAt: daysFromNow(-12),
   expiresAt: daysFromNow(18),
   totalDays: 30,
   autoRenew: true,
-  subscriptionUrl: 'https://sub.aurora-vpn.example/c/8f3a9c2e1b',
+  subscriptionUrl: 'https://sub.harmony-vpn.example/c/8f3a9c2e1b',
 };
 
 let devices: Device[] = [
@@ -71,7 +71,7 @@ const referrals: Referral[] = [
 ];
 
 const PROMO_CODES: Record<string, { amount: number; description: string }> = {
-  'AURORA10': { amount: 10,  description: 'Промо-код AURORA10' },
+  'HARMONY10': { amount: 10,  description: 'Промо-код HARMONY10' },
   'WELCOME':  { amount: 50,  description: 'Промо-код WELCOME'  },
   'VIP100':   { amount: 100, description: 'Промо-код VIP100'   },
 };
@@ -112,7 +112,7 @@ export const api = {
     profile = { ...profile, balance: Math.max(0, profile.balance - plan.priceRub) };
     subscription = {
       ...subscription,
-      plan: 'Aurora ' + plan.name,
+      plan: 'Harmony ' + plan.name,
       status: 'active',
       startedAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + plan.durationDays * 86_400_000).toISOString(),

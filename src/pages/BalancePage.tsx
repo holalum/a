@@ -108,7 +108,7 @@ export function BalancePage() {
           </button>
         </div>
         <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-faint)' }}>
-          Попробуй: WELCOME, AURORA10, VIP100
+          Попробуй: WELCOME, HARMONY10, VIP100
         </p>
       </div>
 

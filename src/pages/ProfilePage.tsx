@@ -110,7 +110,7 @@ export function ProfilePage() {
       </div>
 
       <p style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 12, marginTop: 22 }}>
-        Aurora VPN · v0.1.0 · {isTelegram ? 'Telegram Mini App' : 'браузер'}
+        Harmony VPN · v0.1.0 · {isTelegram ? 'Telegram Mini App' : 'браузер'}
       </p>
 
       {/* Соглашение */}
@@ -120,7 +120,7 @@ export function ProfilePage() {
             <h3 className="modal-title">Пользовательское соглашение</h3>
             <div style={{ color: 'var(--text-dim)', fontSize: 13.5, lineHeight: 1.65 }}>
               <p><b style={{ color: 'var(--text)' }}>1. Общие положения</b><br />
-              Используя Aurora VPN, вы принимаете настоящее соглашение в полном объёме. Сервис предоставляется «как есть».</p>
+              Используя Harmony VPN, вы принимаете настоящее соглашение в полном объёме. Сервис предоставляется «как есть».</p>
               <p><b style={{ color: 'var(--text)' }}>2. Допустимое использование</b><br />
               Запрещается использовать сервис для незаконной деятельности, обхода санкций, распространения вредоносного ПО или нарушения прав третьих лиц.</p>
               <p><b style={{ color: 'var(--text)' }}>3. Конфиденциальность</b><br />

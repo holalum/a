@@ -29,7 +29,7 @@ export function HomePage({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
   return (
     <div className="screen">
       <h1 className="screen-title">Привет, {profile.firstName} 👋</h1>
-      <p className="screen-subtitle">Aurora VPN · защита всегда с тобой</p>
+      <p className="screen-subtitle">Harmony VPN · защита всегда с тобой</p>
 
       {/* Герой */}
       <div className="hero">

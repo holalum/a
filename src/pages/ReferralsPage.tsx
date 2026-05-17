@@ -9,7 +9,7 @@ export function ReferralsPage() {
 
   if (!profile) return null;
 
-  const refLink = `https://t.me/AuroraVPNBot?start=${profile.referralCode}`;
+  const refLink = `https://t.me/HarmonyVPNBot?start=${profile.referralCode}`;
 
   const copyLink = async () => {
     try {
