@@ -241,11 +241,12 @@ h4 {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
   color: var(--text-faint);
-  font-size: 10.5px;
+  font-size: 9px;
   font-weight: 600;
   transition: color 0.15s ease;
+  padding: 0 2px;
 }
 
 .nav-item.active {
@@ -253,8 +254,8 @@ h4 {
 }
 
 .nav-item svg {
-  width: 24px;
-  height: 24px;
+  width: 21px;
+  height: 21px;
 }
 
 .nav-item.highlight.active {

@@ -1,24 +1,19 @@
-// Логика колеса фортуны: призы, взвешенный рандом и недельный кулдаун.
-// Состояние кулдауна хранится в localStorage (фронтенд-заглушка).
-// Позже проверка «можно ли крутить» и розыгрыш переедут на сервер.
-
 import type { Prize, SpinResult } from './types';
 
-export const SPIN_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 1 неделя
+export const SPIN_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 
 const STORAGE_LAST_SPIN = 'aurora.wheel.lastSpin';
 const STORAGE_HISTORY = 'aurora.wheel.history';
 
-// Сектора колеса. weight — относительная вероятность выпадения.
 export const PRIZES: Prize[] = [
-  { id: 'd7', label: '7 дней подписки', shortLabel: '+7 дней', kind: 'days', amount: 7, weight: 14, color: '#7c5cff' },
-  { id: 'nope1', label: 'Повезёт в следующий раз', shortLabel: 'Мимо', kind: 'nothing', amount: 0, weight: 26, color: '#3a3a52' },
-  { id: 'tr50', label: '50 ГБ бонусного трафика', shortLabel: '+50 ГБ', kind: 'traffic', amount: 50, weight: 18, color: '#2bd9c4' },
-  { id: 'disc30', label: 'Скидка 30% на тариф', shortLabel: '−30%', kind: 'discount', amount: 30, weight: 12, color: '#ff8a3d' },
-  { id: 'd1', label: '1 день подписки', shortLabel: '+1 день', kind: 'days', amount: 1, weight: 20, color: '#5c8cff' },
-  { id: 'nope2', label: 'Почти получилось', shortLabel: 'Мимо', kind: 'nothing', amount: 0, weight: 22, color: '#3a3a52' },
-  { id: 'tr100', label: '100 ГБ бонусного трафика', shortLabel: '+100 ГБ', kind: 'traffic', amount: 100, weight: 9, color: '#2bd9c4' },
-  { id: 'd30', label: 'ДЖЕКПОТ: 30 дней!', shortLabel: '+30 дней', kind: 'days', amount: 30, weight: 3, color: '#ffd23d' },
+  { id: 'd7',    label: '7 дней подписки',      shortLabel: '+7 дней',   kind: 'days',     amount: 7,   weight: 14, color: '#7c5cff' },
+  { id: 'nope1', label: 'Повезёт в следующий раз', shortLabel: 'Мимо',  kind: 'nothing',  amount: 0,   weight: 26, color: '#3a3a52' },
+  { id: 'bal50', label: '50 ₽ на баланс',        shortLabel: '+50 ₽',   kind: 'balance',  amount: 50,  weight: 18, color: '#2bd9c4' },
+  { id: 'disc30',label: 'Скидка 30% на тариф',   shortLabel: '−30%',    kind: 'discount', amount: 30,  weight: 12, color: '#ff8a3d' },
+  { id: 'd1',    label: '1 день подписки',        shortLabel: '+1 день', kind: 'days',     amount: 1,   weight: 20, color: '#5c8cff' },
+  { id: 'nope2', label: 'Почти получилось',       shortLabel: 'Мимо',   kind: 'nothing',  amount: 0,   weight: 22, color: '#3a3a52' },
+  { id: 'bal200',label: '200 ₽ на баланс',        shortLabel: '+200 ₽', kind: 'balance',  amount: 200, weight: 9,  color: '#2bd9c4' },
+  { id: 'd30',   label: 'ДЖЕКПОТ: 30 дней!',     shortLabel: '+30 дней',kind: 'days',     amount: 30,  weight: 3,  color: '#ffd23d' },
 ];
 
 export function getLastSpinAt(): number | null {
@@ -47,7 +42,6 @@ export function getHistory(): SpinResult[] {
   }
 }
 
-// Взвешенный выбор сектора.
 export function pickPrize(): number {
   const total = PRIZES.reduce((s, p) => s + p.weight, 0);
   let roll = Math.random() * total;
@@ -58,12 +52,8 @@ export function pickPrize(): number {
   return PRIZES.length - 1;
 }
 
-// Фиксирует результат прокрутки и запускает кулдаун.
 export function commitSpin(prizeIndex: number): SpinResult {
-  const result: SpinResult = {
-    prize: PRIZES[prizeIndex],
-    at: new Date().toISOString(),
-  };
+  const result: SpinResult = { prize: PRIZES[prizeIndex], at: new Date().toISOString() };
   localStorage.setItem(STORAGE_LAST_SPIN, String(Date.now()));
   const history = [result, ...getHistory()].slice(0, 20);
   localStorage.setItem(STORAGE_HISTORY, JSON.stringify(history));

@@ -1,13 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Prize, SpinResult } from '../api';
-import {
-  PRIZES,
-  canSpin,
-  commitSpin,
-  getHistory,
-  getNextSpinAt,
-  pickPrize,
-} from '../api/wheel';
+import { PRIZES, canSpin, commitSpin, getHistory, getNextSpinAt, pickPrize } from '../api/wheel';
 import { useStore } from '../store';
 import { haptic, hapticNotify } from '../telegram';
 import { useToast } from '../toast';
@@ -17,11 +10,7 @@ const SEG = (2 * Math.PI) / PRIZES.length;
 const SPIN_MS = 5200;
 
 const PRIZE_EMOJI: Record<string, string> = {
-  days: '🎁',
-  traffic: '📶',
-  discount: '🏷️',
-  device: '➕',
-  nothing: '🙃',
+  days: '🎁', balance: '💰', discount: '🏷️', nothing: '🙃',
 };
 
 function drawWheel(ctx: CanvasRenderingContext2D, size: number, rotation: number) {
@@ -43,7 +32,6 @@ function drawWheel(ctx: CanvasRenderingContext2D, size: number, rotation: number
     ctx.strokeStyle = 'rgba(0,0,0,0.18)';
     ctx.stroke();
 
-    // подпись сектора
     ctx.save();
     ctx.translate(c, c);
     ctx.rotate(start + SEG / 2);
@@ -55,7 +43,6 @@ function drawWheel(ctx: CanvasRenderingContext2D, size: number, rotation: number
     ctx.restore();
   });
 
-  // внешнее кольцо
   ctx.beginPath();
   ctx.arc(c, c, r, 0, 2 * Math.PI);
   ctx.lineWidth = 5;
@@ -96,22 +83,14 @@ export function WheelPage() {
     ctx.restore();
   }, []);
 
-  useEffect(() => {
-    render();
-  }, [render]);
+  useEffect(() => { render(); }, [render]);
 
-  // таймер обратного отсчёта до следующей прокрутки
   useEffect(() => {
     if (available || nextAt == null) return;
     const tick = () => {
       const left = nextAt - Date.now();
-      if (left <= 0) {
-        setAvailable(true);
-        setNextAt(null);
-        setRemaining(0);
-      } else {
-        setRemaining(left);
-      }
+      if (left <= 0) { setAvailable(true); setNextAt(null); setRemaining(0); }
+      else setRemaining(left);
     };
     tick();
     const id = setInterval(tick, 1000);
@@ -127,16 +106,12 @@ export function WheelPage() {
     haptic('heavy');
 
     const index = pickPrize();
-    // лёгкий разброс попадания внутри сектора — для естественности
     const jitter = (Math.random() - 0.5) * SEG * 0.55;
-    const pointerAngle = -Math.PI / 2;
-    const sectorCenter = index * SEG + SEG / 2;
-    const needMod = ((pointerAngle - sectorCenter - jitter) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+    const needMod = ((-Math.PI / 2 - index * SEG - SEG / 2 - jitter) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
     const currentMod = ((rotationRef.current % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
     const delta = (needMod - currentMod + 2 * Math.PI) % (2 * Math.PI);
     const from = rotationRef.current;
     const to = from + 6 * 2 * Math.PI + delta;
-
     const startTs = performance.now();
     let lastTick = 0;
 
@@ -144,19 +119,9 @@ export function WheelPage() {
       const p = Math.min(1, (now - startTs) / SPIN_MS);
       rotationRef.current = from + (to - from) * easeOutCubic(p);
       render();
-
-      // тиканье при прохождении границ секторов
       const passed = Math.floor(rotationRef.current / SEG);
-      if (passed !== lastTick) {
-        lastTick = passed;
-        if (p < 0.97) haptic('light');
-      }
-
-      if (p < 1) {
-        rafRef.current = requestAnimationFrame(frame);
-      } else {
-        finishSpin(index);
-      }
+      if (passed !== lastTick) { lastTick = passed; if (p < 0.97) haptic('light'); }
+      if (p < 1) { rafRef.current = requestAnimationFrame(frame); } else { finishSpin(index); }
     };
     rafRef.current = requestAnimationFrame(frame);
   };
@@ -194,19 +159,12 @@ export function WheelPage() {
       </div>
 
       {available ? (
-        <button
-          className="btn btn-primary"
-          style={{ marginTop: 18 }}
-          disabled={spinning}
-          onClick={spin}
-        >
+        <button className="btn btn-primary" style={{ marginTop: 18 }} disabled={spinning} onClick={spin}>
           {spinning ? 'Крутим…' : '🎲 Крутить колесо'}
         </button>
       ) : (
-        <div className="cooldown-box card">
-          <div style={{ color: 'var(--text-dim)', fontSize: 13 }}>
-            Следующая прокрутка через
-          </div>
+        <div className="cooldown-box card" style={{ marginTop: 18 }}>
+          <div style={{ color: 'var(--text-dim)', fontSize: 13 }}>Следующая прокрутка через</div>
           <div className="cooldown-timer">{formatCountdown(remaining)}</div>
         </div>
       )}
@@ -219,10 +177,10 @@ export function WheelPage() {
           </div>
           <div style={{ color: 'var(--text-dim)', fontSize: 13, marginTop: 4 }}>
             {result.kind === 'nothing'
-              ? 'Возвращайся через неделю за новым шансом'
+              ? 'Возвращайся через неделю'
               : result.kind === 'discount'
                 ? 'Промокод придёт в чат бота'
-                : 'Приз уже зачислен на твой аккаунт'}
+                : 'Приз зачислен на твой аккаунт'}
           </div>
         </div>
       )}
@@ -231,9 +189,7 @@ export function WheelPage() {
       <div className="card">
         {PRIZES.filter((p) => p.kind !== 'nothing').map((p) => (
           <div className="row" key={p.id}>
-            <div className="row-icon" style={{ background: p.color + '33' }}>
-              {PRIZE_EMOJI[p.kind]}
-            </div>
+            <div className="row-icon" style={{ background: p.color + '33' }}>{PRIZE_EMOJI[p.kind]}</div>
             <div className="row-body">
               <div className="row-title">{p.label}</div>
               <div className="row-sub">Шанс выпадения зависит от удачи</div>
@@ -250,9 +206,7 @@ export function WheelPage() {
               <div className="row" key={i}>
                 <div className="row-icon">{PRIZE_EMOJI[h.prize.kind]}</div>
                 <div className="row-body">
-                  <div className="row-title">
-                    {h.prize.kind === 'nothing' ? 'Без приза' : h.prize.label}
-                  </div>
+                  <div className="row-title">{h.prize.kind === 'nothing' ? 'Без приза' : h.prize.label}</div>
                   <div className="row-sub">{formatShortDate(h.at)}</div>
                 </div>
               </div>

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { BottomNav, type Tab } from './components/BottomNav';
 import { ScreenSkeleton } from './components/ui';
-import { DevicesPage } from './pages/DevicesPage';
+import { BalancePage } from './pages/BalancePage';
 import { HomePage } from './pages/HomePage';
-import { PlansPage } from './pages/PlansPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { ReferralsPage } from './pages/ReferralsPage';
+import { SubscriptionPage } from './pages/SubscriptionPage';
 import { WheelPage } from './pages/WheelPage';
 import { useStore } from './store';
 import { initTelegram, telegram } from './telegram';
@@ -18,22 +19,15 @@ export function App() {
     try {
       telegram?.setHeaderColor('#0d0d14');
       telegram?.setBackgroundColor('#0d0d14');
-    } catch {
-      /* старые клиенты */
-    }
+    } catch { /* старые клиенты */ }
   }, []);
 
-  // Кнопка «Назад» Telegram уводит на главную с любой вкладки.
   useEffect(() => {
     const back = telegram?.BackButton;
     if (!back) return;
     const handler = () => setTab('home');
-    if (tab === 'home') {
-      back.hide();
-    } else {
-      back.show();
-      back.onClick(handler);
-    }
+    if (tab === 'home') { back.hide(); }
+    else { back.show(); back.onClick(handler); }
     return () => back.offClick(handler);
   }, [tab]);
 
@@ -44,10 +38,11 @@ export function App() {
         <ScreenSkeleton />
       ) : (
         <>
-          {tab === 'home' && <HomePage onNavigate={setTab} />}
-          {tab === 'devices' && <DevicesPage />}
-          {tab === 'wheel' && <WheelPage />}
-          {tab === 'plans' && <PlansPage />}
+          {tab === 'home'    && <HomePage onNavigate={setTab} />}
+          {tab === 'sub'     && <SubscriptionPage />}
+          {tab === 'balance' && <BalancePage />}
+          {tab === 'wheel'   && <WheelPage />}
+          {tab === 'ref'     && <ReferralsPage />}
           {tab === 'profile' && <ProfilePage />}
         </>
       )}

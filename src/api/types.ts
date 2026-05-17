@@ -1,5 +1,3 @@
-// Доменные типы. Соответствуют сущностям, которые позже придут из панели Remnawave.
-
 export interface Profile {
   id: number;
   firstName: string;
@@ -9,7 +7,9 @@ export interface Profile {
   isPremium?: boolean;
   referralCode: string;
   referralsCount: number;
-  balanceBonusDays: number;
+  referralEarnings: number; // руб, накоплено всего
+  referralCommission: number; // % (по умолчанию 20)
+  balance: number; // руб
 }
 
 export type SubscriptionStatus = 'active' | 'trial' | 'expired';
@@ -19,10 +19,9 @@ export interface Subscription {
   status: SubscriptionStatus;
   expiresAt: string; // ISO
   startedAt: string; // ISO
-  trafficUsedGb: number;
-  trafficLimitGb: number | null; // null = безлимит
+  totalDays: number; // продолжительность тарифа
   autoRenew: boolean;
-  subscriptionUrl: string; // ссылка для импорта в VPN-клиент
+  subscriptionUrl: string;
 }
 
 export type DevicePlatform = 'ios' | 'android' | 'windows' | 'macos' | 'linux' | 'router';
@@ -31,7 +30,7 @@ export interface Device {
   id: string;
   name: string;
   platform: DevicePlatform;
-  lastSeen: string; // ISO
+  lastSeen: string;
   isCurrent: boolean;
   ipCountry: string;
 }
@@ -53,26 +52,47 @@ export interface Plan {
   oldPriceRub?: number;
   durationDays: number;
   devices: number;
-  trafficGb: number | null;
   features: string[];
   popular?: boolean;
 }
 
+// --- Баланс ---
+
+export type TransactionType = 'topup' | 'spend' | 'referral' | 'bonus';
+
+export interface Transaction {
+  id: string;
+  type: TransactionType;
+  amount: number; // > 0 пополнение, < 0 трата
+  description: string;
+  at: string; // ISO
+}
+
+// --- Рефералы ---
+
+export interface Referral {
+  telegramId: number;
+  username?: string;
+  firstName: string;
+  joinedAt: string; // ISO
+  earnedRub: number; // сколько ты заработал с него
+}
+
 // --- Колесо фортуны ---
 
-export type PrizeKind = 'days' | 'discount' | 'traffic' | 'device' | 'nothing';
+export type PrizeKind = 'days' | 'discount' | 'balance' | 'nothing';
 
 export interface Prize {
   id: string;
   label: string;
   shortLabel: string;
   kind: PrizeKind;
-  amount: number; // дни / проценты / ГБ / слоты
-  weight: number; // вес для взвешенного рандома
+  amount: number;
+  weight: number;
   color: string;
 }
 
 export interface SpinResult {
   prize: Prize;
-  at: string; // ISO
+  at: string;
 }
