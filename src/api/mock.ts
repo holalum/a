@@ -156,6 +156,26 @@ export const api = {
       ];
     }
   },
+
+  // Wheel: delegated to wheel.ts in WheelPage directly for mock mode
+  async spinWheel(): Promise<{ prizeIndex: number; prizeKind: string; prizeAmount: number }> {
+    await delay(600);
+    const { pickPrize, PRIZES, commitSpin } = await import('./wheel');
+    const index = pickPrize();
+    commitSpin(index);
+    const prize = PRIZES[index];
+    if (prize.kind !== 'nothing' && prize.kind !== 'discount') {
+      await this.applyReward(prize.kind, prize.amount);
+    }
+    return { prizeIndex: index, prizeKind: prize.kind, prizeAmount: prize.amount };
+  },
+
+  async getWheelStatus(): Promise<{ canSpin: boolean; nextSpinAt: string | null }> {
+    await delay(200);
+    const { canSpin, getNextSpinAt } = await import('./wheel');
+    const next = getNextSpinAt();
+    return { canSpin: canSpin(), nextSpinAt: next ? new Date(next).toISOString() : null };
+  },
 };
 
 export type Api = typeof api;

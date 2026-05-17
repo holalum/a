@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Prize, SpinResult } from '../api';
-import { PRIZES, canSpin, commitSpin, getHistory, getNextSpinAt, pickPrize } from '../api/wheel';
+import { api } from '../api';
+import type { Prize } from '../api';
+import { PRIZES } from '../api/wheel';
 import { useStore } from '../store';
 import { haptic, hapticNotify } from '../telegram';
 import { useToast } from '../toast';
@@ -12,6 +13,11 @@ const SPIN_MS = 5200;
 const PRIZE_EMOJI: Record<string, string> = {
   days: '🎁', balance: '💰', discount: '🏷️', nothing: '🙃',
 };
+
+interface HistoryItem {
+  prize: Prize;
+  at: string;
+}
 
 function drawWheel(ctx: CanvasRenderingContext2D, size: number, rotation: number) {
   const c = size / 2;
@@ -56,22 +62,29 @@ export function WheelPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rotationRef = useRef(0);
   const rafRef = useRef<number>(0);
-  const { applyReward } = useStore();
+  const { applyReward, reload } = useStore();
   const notify = useToast();
 
   const [spinning, setSpinning] = useState(false);
-  const [available, setAvailable] = useState(canSpin());
-  const [nextAt, setNextAt] = useState<number | null>(getNextSpinAt());
+  const [available, setAvailable] = useState(true);
+  const [nextAt, setNextAt] = useState<string | null>(null);
   const [remaining, setRemaining] = useState(0);
   const [result, setResult] = useState<Prize | null>(null);
-  const [history, setHistory] = useState<SpinResult[]>(getHistory());
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+
+  // Load wheel status from API on mount
+  useEffect(() => {
+    api.getWheelStatus().then(({ canSpin, nextSpinAt }) => {
+      setAvailable(canSpin);
+      setNextAt(nextSpinAt);
+    }).catch(() => { /* ignore */ });
+  }, []);
 
   const render = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    // Реальный размер канваса на экране — квадрат гарантируется CSS (aspect-ratio).
     const rect = canvas.getBoundingClientRect();
     const size = Math.round(Math.min(rect.width, rect.height));
     if (size === 0) return;
@@ -86,7 +99,6 @@ export function WheelPage() {
     drawWheel(ctx, size, rotationRef.current);
   }, []);
 
-  // Перерисовка после монтирования и при ресайзе окна.
   useEffect(() => {
     const raf = requestAnimationFrame(render);
     window.addEventListener('resize', render);
@@ -96,10 +108,12 @@ export function WheelPage() {
     };
   }, [render]);
 
+  // Countdown timer
   useEffect(() => {
     if (available || nextAt == null) return;
+    const nextMs = new Date(nextAt).getTime();
     const tick = () => {
-      const left = nextAt - Date.now();
+      const left = nextMs - Date.now();
       if (left <= 0) { setAvailable(true); setNextAt(null); setRemaining(0); }
       else setRemaining(left);
     };
@@ -110,13 +124,7 @@ export function WheelPage() {
 
   useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
 
-  const spin = () => {
-    if (spinning || !available) return;
-    setSpinning(true);
-    setResult(null);
-    haptic('heavy');
-
-    const index = pickPrize();
+  const animateTo = (index: number, onDone: () => void) => {
     const jitter = (Math.random() - 0.5) * SEG * 0.55;
     const needMod = ((-Math.PI / 2 - index * SEG - SEG / 2 - jitter) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
     const currentMod = ((rotationRef.current % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
@@ -132,28 +140,53 @@ export function WheelPage() {
       render();
       const passed = Math.floor(rotationRef.current / SEG);
       if (passed !== lastTick) { lastTick = passed; if (p < 0.97) haptic('light'); }
-      if (p < 1) { rafRef.current = requestAnimationFrame(frame); } else { finishSpin(index); }
+      if (p < 1) { rafRef.current = requestAnimationFrame(frame); } else { onDone(); }
     };
     rafRef.current = requestAnimationFrame(frame);
   };
 
-  const finishSpin = (index: number) => {
-    const spinResult = commitSpin(index);
-    const prize = spinResult.prize;
-    setResult(prize);
-    setSpinning(false);
-    setAvailable(false);
-    setNextAt(getNextSpinAt());
-    setHistory(getHistory());
+  const spin = async () => {
+    if (spinning || !available) return;
+    setSpinning(true);
+    setResult(null);
+    haptic('heavy');
 
-    if (prize.kind === 'nothing') {
-      hapticNotify('warning');
-      notify('Не повезло — но через неделю новый шанс!');
-    } else {
-      hapticNotify('success');
-      notify(`Поздравляем: ${prize.label}!`);
-      void applyReward(prize.kind, prize.amount);
+    let prizeIndex: number;
+    let prizeKind: string;
+    let prizeAmount: number;
+
+    try {
+      const res = await api.spinWheel();
+      prizeIndex = res.prizeIndex;
+      prizeKind = res.prizeKind;
+      prizeAmount = res.prizeAmount;
+    } catch (e) {
+      setSpinning(false);
+      notify((e as Error).message || 'Ошибка — попробуй ещё раз');
+      return;
     }
+
+    animateTo(prizeIndex, () => {
+      const prize = PRIZES[prizeIndex];
+      const at = new Date().toISOString();
+      setResult(prize);
+      setSpinning(false);
+      setAvailable(false);
+
+      // Refresh cooldown
+      api.getWheelStatus().then(({ nextSpinAt }) => setNextAt(nextSpinAt)).catch(() => { /* ignore */ });
+      setHistory((h) => [{ prize, at }, ...h].slice(0, 20));
+
+      if (prizeKind === 'nothing') {
+        hapticNotify('warning');
+        notify('Не повезло — но через неделю новый шанс!');
+      } else {
+        hapticNotify('success');
+        notify(`Поздравляем: ${prize.label}!`);
+        void applyReward(prizeKind, prizeAmount);
+        void reload();
+      }
+    });
   };
 
   return (
@@ -170,7 +203,7 @@ export function WheelPage() {
       </div>
 
       {available ? (
-        <button className="btn btn-primary" style={{ marginTop: 18 }} disabled={spinning} onClick={spin}>
+        <button className="btn btn-primary" style={{ marginTop: 18 }} disabled={spinning} onClick={() => void spin()}>
           {spinning ? 'Крутим…' : '🎲 Крутить колесо'}
         </button>
       ) : (
