@@ -70,7 +70,7 @@ class PlanResponse(BaseModel):
     id: str
     name: str
     price_rub: int
-    old_price_rub: Optional[int]
+    old_price_rub: Optional[int] = None
     duration_days: int
     devices: int
     features: list[str]
